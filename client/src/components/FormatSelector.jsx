@@ -5,7 +5,7 @@ const FORMATS = [
   { id: 'webp', label: 'WEBP' }
 ];
 
-export default function FormatSelector({ value, onChange }) {
+export default function FormatSelector({ value, onChange, disabled = false }) {
   return (
     <div className="control-group">
       <div className="control-label">
@@ -16,6 +16,7 @@ export default function FormatSelector({ value, onChange }) {
           <button
             key={f.id}
             type="button"
+            disabled={disabled}
             className={value === f.id ? 'active' : ''}
             onClick={() => onChange(f.id)}
           >

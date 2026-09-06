@@ -8,7 +8,8 @@ export default function WidthSelector({
   onCustomChange,
   dontEnlarge,
   onToggleEnlarge,
-  error
+  error,
+  disabled = false
 }) {
   return (
     <div className="control-group">
@@ -21,6 +22,7 @@ export default function WidthSelector({
           <button
             key={w}
             type="button"
+            disabled={disabled}
             className={`width-pill ${!isCustom && targetWidth === w ? 'active' : ''}`}
             onClick={() => onSelectPreset(w)}
           >
@@ -29,6 +31,7 @@ export default function WidthSelector({
         ))}
         <button
           type="button"
+          disabled={disabled}
           className={`width-pill ${isCustom ? 'active' : ''}`}
           onClick={() => onSelectPreset('custom')}
         >
@@ -45,6 +48,7 @@ export default function WidthSelector({
             inputMode="numeric"
             placeholder="e.g. 3500"
             value={customValue}
+            disabled={disabled}
             onChange={(e) => onCustomChange(e.target.value)}
           />
           <span className="suffix">px</span>
@@ -53,8 +57,13 @@ export default function WidthSelector({
       {error && <div className="field-error">{error}</div>}
 
       <div className="control-group">
-        <label className="checkbox-row">
-          <input type="checkbox" checked={dontEnlarge} onChange={(e) => onToggleEnlarge(e.target.checked)} />
+        <label className={`checkbox-row ${disabled ? 'is-disabled' : ''}`}>
+          <input
+            type="checkbox"
+            checked={dontEnlarge}
+            disabled={disabled}
+            onChange={(e) => onToggleEnlarge(e.target.checked)}
+          />
           <span>Don't enlarge smaller images</span>
         </label>
       </div>

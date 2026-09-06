@@ -86,6 +86,11 @@ async function getStatus(jobId) {
   return parseResponse(res);
 }
 
+async function getJob(jobId) {
+  const res = await fetch(`${API_URL}/resize/${jobId}`);
+  return parseResponse(res);
+}
+
 function getDownloadUrl(jobId, type = 'zip') {
   return `${API_URL}/resize/download/${jobId}?type=${type}`;
 }
@@ -101,12 +106,19 @@ async function deleteJob(jobId) {
   return parseResponse(res);
 }
 
+async function getStorageJobs() {
+  const res = await fetch(`${API_URL}/storage/jobs`);
+  return parseResponse(res);
+}
+
 export default {
   uploadFiles,
   processJob,
   getStatus,
+  getJob,
   getDownloadUrl,
   getHistory,
   deleteJob,
+  getStorageJobs,
   ApiError
 };

@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import UploadZone from '../components/UploadZone';
 import WidthSelector from '../components/WidthSelector';
 import FormatSelector from '../components/FormatSelector';
@@ -7,143 +6,52 @@ import FileQueue from '../components/FileQueue';
 import ProcessingProgress from '../components/ProcessingProgress';
 import ResultSummary from '../components/ResultSummary';
 import Button from '../components/Button';
-import api from '../services/api';
-import { useJobProgress } from '../hooks/useJobProgress';
-
-const MAX_THUMBNAILS = 500;
-
-function buildThumbnails(entries, manifestFiles) {
-  const manifestSet = new Set(manifestFiles.map((f) => f.relativePath));
-  const map = {};
-  let count = 0;
-  for (const { file, relativePath } of entries) {
-    if (count >= MAX_THUMBNAILS) break;
-    if (manifestSet.has(relativePath) && file.type && file.type.startsWith('image/')) {
-      map[relativePath] = URL.createObjectURL(file);
-      count += 1;
-    }
-  }
-  return map;
-}
+import { Spinner } from '../components/Spinner';
+import { useJob } from '../context/JobContext';
 
 export default function Home() {
-  const [phase, setPhase] = useState('empty'); // empty | staged | processing | completed
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadResult, setUploadResult] = useState(null);
-  const [thumbnails, setThumbnails] = useState({});
-  const [error, setError] = useState(null);
+  const {
+    phase,
+    uploading,
+    uploadProgress,
+    uploadResult,
+    thumbnails,
+    error,
+    rehydrating,
+    widthMode,
+    setWidthMode,
+    targetWidth,
+    setTargetWidth,
+    customWidth,
+    setCustomWidth,
+    widthError,
+    setWidthError,
+    dontEnlarge,
+    setDontEnlarge,
+    outputFormat,
+    setOutputFormat,
+    quality,
+    setQuality,
+    jobId,
+    starting,
+    job,
+    effectiveTargetWidth,
+    handleFilesReady,
+    handleProcess,
+    handleReset,
+    getStatus
+  } = useJob();
 
-  const [widthMode, setWidthMode] = useState('preset');
-  const [targetWidth, setTargetWidth] = useState(3000);
-  const [customWidth, setCustomWidth] = useState('3500');
-  const [widthError, setWidthError] = useState(null);
-  const [dontEnlarge, setDontEnlarge] = useState(true);
-  const [outputFormat, setOutputFormat] = useState('original');
-  const [quality, setQuality] = useState(90);
-
-  const [jobId, setJobId] = useState(null);
-  const [starting, setStarting] = useState(false);
-
-  const thumbUrlsRef = useRef([]);
-
-  const { job } = useJobProgress(jobId, phase === 'processing');
-
-  useEffect(() => {
-    if (!job) return;
-    if (job.status === 'completed' || job.status === 'failed') {
-      setPhase('completed');
-    }
-  }, [job]);
-
-  useEffect(() => {
-    return () => {
-      thumbUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, []);
-
-  function effectiveTargetWidth() {
-    if (widthMode !== 'custom') return targetWidth;
-    const n = Number(customWidth);
-    return Number.isFinite(n) ? n : NaN;
-  }
-
-  function validateWidth() {
-    const w = effectiveTargetWidth();
-    if (!Number.isFinite(w) || w <= 0) {
-      setWidthError('Enter a positive width in pixels.');
-      return false;
-    }
-    if (w > 20000) {
-      setWidthError('Width is too large (max 20,000px).');
-      return false;
-    }
-    setWidthError(null);
-    return true;
-  }
-
-  async function handleFilesReady(entries, inputType) {
-    setError(null);
-    setUploading(true);
-    setUploadProgress(0);
-    try {
-      const data = await api.uploadFiles(entries, inputType, setUploadProgress);
-      const urls = buildThumbnails(entries, data.files);
-      thumbUrlsRef.current = Object.values(urls);
-      setThumbnails(urls);
-      setUploadResult(data);
-      setJobId(data.jobId);
-      setPhase('staged');
-    } catch (err) {
-      setError(err.message || 'Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleProcess() {
-    if (!validateWidth()) return;
-    setStarting(true);
-    setError(null);
-    try {
-      await api.processJob(jobId, {
-        targetWidth: effectiveTargetWidth(),
-        dontEnlarge,
-        outputFormat,
-        quality
-      });
-      setPhase('processing');
-    } catch (err) {
-      setError(err.message || 'Could not start processing. Please try again.');
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  function handleReset() {
-    thumbUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    thumbUrlsRef.current = [];
-    setThumbnails({});
-    setUploadResult(null);
-    setJobId(null);
-    setError(null);
-    setPhase('empty');
-  }
-
-  function getStatus(index, relativePath) {
-    if (phase === 'staged') return 'ready';
-
-    if (phase === 'processing' || phase === 'completed') {
-      if (job?.failedFiles?.some((f) => f.file === relativePath)) return 'failed';
-      if (phase === 'completed') return 'done';
-      if (job) {
-        if (index < job.processed) return 'done';
-        if (index === job.processed) return 'processing';
-      }
-      return 'ready';
-    }
-
-    return 'ready';
+  if (rehydrating) {
+    return (
+      <div className="page-container">
+        <div className="empty-state">
+          <Spinner size="lg" />
+          <h3 style={{ marginTop: 16 }}>Restoring your last session…</h3>
+          <p>Checking on your batch's progress.</p>
+        </div>
+      </div>
+    );
   }
 
   const files = uploadResult?.files || [];
@@ -152,7 +60,7 @@ export default function Home() {
 
   return (
     <div className="page-container">
-      {phase === 'empty' && (
+      {(phase === 'empty' || !hasFiles) && (
         <>
           <div className="page-head">
             <h1>Image Pixel Reducer</h1>
@@ -194,10 +102,11 @@ export default function Home() {
                 dontEnlarge={dontEnlarge}
                 onToggleEnlarge={setDontEnlarge}
                 error={widthError}
+                disabled={phase !== 'staged'}
               />
 
-              <FormatSelector value={outputFormat} onChange={setOutputFormat} />
-              <QualityControl quality={quality} onChange={setQuality} />
+              <FormatSelector value={outputFormat} onChange={setOutputFormat} disabled={phase !== 'staged'} />
+              <QualityControl quality={quality} onChange={setQuality} disabled={phase !== 'staged'} />
 
               <div className="control-group">
                 {phase === 'staged' && (

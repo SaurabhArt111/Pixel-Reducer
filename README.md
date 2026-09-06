@@ -25,8 +25,26 @@ Built as a MERN application:
   downloaded ZIP/image filename gets a `_<width>px` suffix
 - Live per-file "Original → Output" dimension preview before you process
 - Real processing progress (polled from the server — not simulated)
+- **Progress survives reloads, tab close, and navigating around the app.**
+  Your active/staged/processing/completed batch lives in a React context
+  above the router (so switching between Home → History → Storage never
+  clears it) and is mirrored to `localStorage` + reconciled against the
+  server on load (so a reload or reopened tab picks up exactly where you
+  left off, as long as the backend process is still running).
+- An in-app **completion popup** (not a browser dialog) appears the moment
+  a batch finishes — with Download ZIP / Download Image / Start New Batch
+  actions — even if you've navigated away to History or Storage while it
+  was processing.
 - Per-batch results: total processed/failed, size before/after, space saved
 - Job history page backed by MongoDB, with search and status filtering
+- **Storage page**: browse every job's working files on disk (under
+  `server/temp/` and the generated ZIPs under `server/output/`), see how
+  much space each is using, and delete completed ones — jobs that are
+  still actively processing can't be deleted until they finish
+- Left sidebar navigation (collapses into a slide-out drawer on mobile)
+- Works across your local network out of the box: the backend binds to all
+  interfaces and logs its LAN URL on startup, the Vite dev server does the
+  same, and CORS allows any local-network origin in development
 - Security: Helmet, CORS allow-list, rate limiting, MIME/extension validation,
   path-traversal and zip-slip protection, upload size limits
 - Graceful error handling: corrupt ZIPs, empty ZIPs, unsupported files mixed
@@ -48,10 +66,10 @@ pixel-reducer/
 │   └── server.js / app.js
 └── client/                 React + Vite frontend
     └── src/
-        ├── components/      UploadZone, FileQueue, WidthSelector, etc.
-        ├── pages/           Home, History
+        ├── components/      UploadZone, FileQueue, Sidebar, CompletionModal, etc.
+        ├── context/         JobContext (global, persisted job/upload state)
+        ├── pages/           Home, History, Storage
         ├── services/        api.js (fetch/XHR wrapper)
-        ├── hooks/           useJobProgress (status polling)
         └── utils/           Client-side dimension math, drag-drop folder reader
 ```
 
@@ -119,6 +137,23 @@ Open `http://localhost:5173`. If MongoDB isn't running, you'll see a warning
 in the server logs — resizing still works, but the History page will show a
 message that the database isn't connected.
 
+## Using it from another device on your network
+
+Both dev servers bind to all network interfaces, so you can open the app
+from your phone or another computer on the same Wi-Fi/LAN:
+
+1. Start both servers as above. The backend logs a line like
+   `Also reachable on your network at http://192.168.1.20:5000`, and Vite
+   prints a `Network:` URL the same way.
+2. On the other device, open the frontend's LAN URL
+   (e.g. `http://192.168.1.20:5173`) — it talks to the backend through
+   Vite's dev proxy automatically, no extra configuration needed.
+3. In development, the backend's CORS allows any private-network origin, so
+   this works without editing `.env`. For a production deployment across
+   different hosts, set `CLIENT_URL` to the real origin(s) instead (comma-
+   separated if there's more than one), since the LAN allowance only
+   applies when `NODE_ENV` isn't `production`.
+
 ## Production build
 
 ```bash
@@ -158,3 +193,20 @@ base URL before building.
   batches don't saturate CPU/RAM.
 - A background sweep removes job working files older than
   `JOB_RETENTION_HOURS` (default 24h) from `temp/` and `output/`.
+
+## Notes on state persistence
+
+- Active/staged/processing/completed batch state lives in a React context
+  above the router, so it survives navigating between Home, History and
+  Storage without being cleared.
+- It's also mirrored to `localStorage` and reconciled against the backend
+  on load, so reloading the tab or closing and reopening it picks up right
+  where you left off — as long as the same backend process is still
+  running. If the Node process itself restarts while a job is mid-flight,
+  that specific in-progress job can't be resumed (its in-memory progress is
+  gone), though completed jobs remain downloadable from History/Storage
+  since their ZIP and database record persist independently.
+- Thumbnails are generated client-side from the originally selected files,
+  so they won't reappear after a reload (the browser no longer has the
+  original file handles) — the file list itself, dimensions and processing
+  status all still restore correctly.

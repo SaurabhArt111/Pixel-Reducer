@@ -182,6 +182,14 @@ async function download(req, res) {
 /** DELETE /api/resize/:jobId */
 async function deleteJob(req, res, next) {
   try {
+    const memJob = progressStore.getJob(req.params.jobId);
+    if (memJob && memJob.status === 'processing') {
+      return res.status(409).json({
+        success: false,
+        message: 'This job is still processing and cannot be deleted yet.'
+      });
+    }
+
     await jobService.deleteJobFiles(req.params.jobId);
     if (isDbConnected()) {
       await ResizeJob.deleteOne({ jobId: req.params.jobId });
