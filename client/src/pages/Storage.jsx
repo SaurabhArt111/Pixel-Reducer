@@ -101,7 +101,7 @@ export default function Storage() {
     <div className="page-container">
       <div className="page-head">
         <h1>Storage</h1>
-        <p>Everything currently on disk under the server's <code>uploads/</code> and <code>temp/</code> folders.</p>
+        <p>Everything currently on disk under the server's <code>uploads/temp</code> and <code>uploads/output</code> folders.</p>
       </div>
 
       <div className="queue-meta">

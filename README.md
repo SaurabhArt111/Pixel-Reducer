@@ -62,7 +62,9 @@ pixel-reducer/
 │   ├── middleware/          Upload (Multer), validation, rate limiting, errors
 │   ├── services/            Image processing, ZIP, job orchestration, cleanup
 │   ├── utils/                Constants, sanitization, filesystem helpers
-│   ├── uploads/ temp/ output/   Runtime working directories (empty at rest)
+│   ├── uploads/              All runtime working files live here (empty at rest)
+│   │   ├── temp/               Per-job working directory while a batch is processed
+│   │   └── output/             Final downloadable ZIPs
 │   └── server.js / app.js
 └── client/                 React + Vite frontend
     └── src/
@@ -106,8 +108,8 @@ CLIENT_URL=http://localhost:5173
 MAX_FILE_SIZE=524288000
 MAX_FILES=2000
 UPLOAD_DIR=uploads
-TEMP_DIR=temp
-OUTPUT_DIR=output
+TEMP_DIR=uploads/temp
+OUTPUT_DIR=uploads/output
 JOB_RETENTION_HOURS=24
 ```
 
@@ -192,7 +194,7 @@ base URL before building.
 - Image processing runs with bounded concurrency (4 at a time) so large
   batches don't saturate CPU/RAM.
 - A background sweep removes job working files older than
-  `JOB_RETENTION_HOURS` (default 24h) from `temp/` and `output/`.
+  `JOB_RETENTION_HOURS` (default 24h) from `uploads/temp/` and `uploads/output/`.
 
 ## Notes on state persistence
 

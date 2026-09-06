@@ -14,7 +14,7 @@ const { TEMP_DIR, OUTPUT_DIR, PROCESSING_CONCURRENCY, JOB_STATUS } = require('..
 
 /**
  * After Multer has written the uploaded files (and possibly a raw ZIP) to
- * temp/{jobId}/raw, figure out the input type, extract any ZIP, read
+ * TEMP_DIR/{jobId}/raw, figure out the input type, extract any ZIP, read
  * dimensions for every image, and build the manifest the frontend queue
  * and the later /process step both rely on.
  */
@@ -268,7 +268,7 @@ async function startProcessing(jobId, options) {
     ).catch((err) => console.error('Failed to update history record:', err.message));
   }
 
-  // Working copies under temp/{jobId} (raw + output) are left in place so
+  // Working copies under TEMP_DIR/{jobId} (raw + output) are left in place so
   // the single-image download route can stream directly from them; they
   // are removed together by the retention sweep or on explicit deletion.
 }

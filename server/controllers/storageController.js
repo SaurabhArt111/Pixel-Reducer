@@ -10,7 +10,8 @@ const { TEMP_DIR, OUTPUT_DIR } = require('../utils/constants');
 
 /**
  * GET /api/storage/jobs
- * Lists every job with files still on disk under temp/ or output/, merging
+ * Lists every job with files still on disk under uploads/temp/ or
+ * uploads/output/, merging
  * live in-memory status with the durable Mongo record where available, so
  * the Storage page reflects what's actually taking up space right now.
  */

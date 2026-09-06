@@ -2,9 +2,14 @@ const path = require('path');
 
 const ROOT_DIR = path.join(__dirname, '..');
 
+// Everything the app writes to disk lives under a single `uploads/` root:
+//   uploads/temp/{jobId}/...   working files while a job is processed
+//   uploads/output/{jobId}.zip  the final downloadable archive
+// This keeps the whole working tree in one place instead of scattering it
+// across separate top-level folders.
 const UPLOAD_DIR = path.join(ROOT_DIR, process.env.UPLOAD_DIR || 'uploads');
-const TEMP_DIR = path.join(ROOT_DIR, process.env.TEMP_DIR || 'temp');
-const OUTPUT_DIR = path.join(ROOT_DIR, process.env.OUTPUT_DIR || 'output');
+const TEMP_DIR = path.join(ROOT_DIR, process.env.TEMP_DIR || path.join('uploads', 'temp'));
+const OUTPUT_DIR = path.join(ROOT_DIR, process.env.OUTPUT_DIR || path.join('uploads', 'output'));
 
 // Extensions we know how to decode/re-encode with Sharp
 const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.tiff', '.tif'];

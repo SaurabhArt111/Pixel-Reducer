@@ -1,7 +1,10 @@
-import { useState } from 'react';
 import { computeOutputDimensions, formatBytes } from '../utils/dimensions';
+import { useVirtualList } from '../hooks/useVirtualList';
 
-const PAGE_SIZE = 60;
+// Kept in sync with the fixed `.queue-row` height in index.css - both need
+// to agree for the virtualized positioning math to line up with what's
+// actually rendered.
+const ROW_HEIGHT = 68;
 
 const STATUS_LABEL = {
   ready: 'Ready',
@@ -28,8 +31,8 @@ function Row({ item, thumb, targetWidth, dontEnlarge, status }) {
         {folder ? <div className="queue-path">{folder}/</div> : <div className="queue-path">{formatBytes(item.size)}</div>}
       </div>
       <div className="queue-dims">
-        <span>{item.width ? `${item.width}×${item.height}` : '—'}</span>
-        <span className="arrow">→</span>
+        <span className="queue-dims-full">{item.width ? `${item.width}×${item.height}` : '—'}</span>
+        <span className="arrow queue-dims-full">→</span>
         <span>{output.width ? `${output.width}×${output.height}` : '—'}</span>
       </div>
       <span className={`queue-status status-${status}`}>{STATUS_LABEL[status]}</span>
@@ -45,38 +48,40 @@ export default function FileQueue({
   totalSizeLabel,
   getStatus
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? files : files.slice(0, PAGE_SIZE);
+  const { containerRef, startIndex, endIndex, totalHeight, offsetY } = useVirtualList({
+    itemCount: files.length,
+    rowHeight: ROW_HEIGHT,
+    overscan: 10
+  });
+
+  const visible = files.slice(startIndex, endIndex);
 
   return (
     <div>
       <div className="queue-meta">
-        <span className="count">
-          Files detected: {files.length.toLocaleString()}
-        </span>
+        <span className="count">Files detected: {files.length.toLocaleString()}</span>
         <span className="size">Total size: {totalSizeLabel}</span>
       </div>
 
-      <div className="queue">
-        {visible.map((item, index) => (
-          <Row
-            key={item.relativePath}
-            item={item}
-            thumb={thumbnails[item.relativePath]}
-            targetWidth={targetWidth}
-            dontEnlarge={dontEnlarge}
-            status={getStatus(index, item.relativePath)}
-          />
-        ))}
-      </div>
-
-      {files.length > PAGE_SIZE && !expanded && (
-        <div style={{ textAlign: 'center', marginTop: 14 }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setExpanded(true)}>
-            Show all {files.length.toLocaleString()} files
-          </button>
+      <div className="queue-viewport" ref={containerRef}>
+        <div className="queue-sizer" style={{ height: totalHeight }}>
+          <div className="queue" style={{ transform: `translateY(${offsetY}px)` }}>
+            {visible.map((item, i) => {
+              const index = startIndex + i;
+              return (
+                <Row
+                  key={item.relativePath}
+                  item={item}
+                  thumb={thumbnails[item.relativePath]}
+                  targetWidth={targetWidth}
+                  dontEnlarge={dontEnlarge}
+                  status={getStatus(index, item.relativePath)}
+                />
+              );
+            })}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
