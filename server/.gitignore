@@ -2,8 +2,6 @@ node_modules
 .env
 uploads/*
 temp/*
-output/*
 !uploads/.gitkeep
 !temp/.gitkeep
-!output/.gitkeep
 *.log
