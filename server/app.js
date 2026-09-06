@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
 
 const resizeRoutes = require('./routes/resizeRoutes');
 const historyRoutes = require('./routes/historyRoutes');
@@ -48,7 +47,6 @@ app.use(
   })
 );
 
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
