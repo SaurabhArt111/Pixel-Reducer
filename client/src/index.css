@@ -99,7 +99,6 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -391,7 +390,6 @@ img {
 .btn-ghost {
   background: transparent;
   color: var(--mute);
-  border-color: var(--line);
 }
 
 .btn-ghost:hover:not(:disabled) {
@@ -458,15 +456,8 @@ img {
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.85);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 .skeleton {
@@ -477,13 +468,8 @@ img {
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* ==========================================================================
@@ -499,7 +485,7 @@ img {
 
 .sidebar {
   position: sticky;
-  top: calc(var(--header-height) + 4px);
+  top: calc(var(--header-height) + 24px);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -513,12 +499,10 @@ img {
   .home-grid {
     grid-template-columns: 1fr;
   }
-
   .sidebar {
     position: static;
     order: 2;
   }
-
   .main-col {
     order: 1;
   }
@@ -545,7 +529,7 @@ img {
   justify-content: space-between;
 }
 
-.control-group+.control-group {
+.control-group + .control-group {
   margin-top: 22px;
 }
 
@@ -832,7 +816,6 @@ input[type='range'] {
   padding: 6px;
 }
 
-
 .queue-sizer {
   position: relative;
   width: 100%;
@@ -946,24 +929,19 @@ input[type='range'] {
     gap: 9px;
     padding: 0 10px;
   }
-
   .queue-thumb {
     width: 36px;
     height: 36px;
   }
-
   .queue-name {
     font-size: 0.8rem;
   }
-
   .queue-dims {
     font-size: 0.72rem;
   }
-
   .queue-dims-full {
     display: none;
   }
-
   .queue-status {
     font-size: 0.62rem;
     padding: 3px 7px;
@@ -1180,7 +1158,6 @@ input[type='range'] {
     opacity: 0;
     transform: translateY(8px) scale(0.98);
   }
-
   to {
     opacity: 1;
     transform: none;
@@ -1446,19 +1423,4 @@ input[type='range'] {
 
 .mt-24 {
   margin-top: 24px;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--line);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--panel);
-  border-radius: 4px;
 }

@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { computeOutputDimensions, formatBytes } from '../utils/dimensions';
 import { useVirtualList } from '../hooks/useVirtualList';
+import { useJob } from '../context/JobContext';
 
 // Kept in sync with the fixed `.queue-row` height in index.css - both need
 // to agree for the virtualized positioning math to line up with what's
@@ -48,6 +50,7 @@ export default function FileQueue({
   totalSizeLabel,
   getStatus
 }) {
+  const { requestThumbnails } = useJob();
   const { containerRef, startIndex, endIndex, totalHeight, offsetY } = useVirtualList({
     itemCount: files.length,
     rowHeight: ROW_HEIGHT,
@@ -55,6 +58,19 @@ export default function FileQueue({
   });
 
   const visible = files.slice(startIndex, endIndex);
+
+  // Only decode thumbnails for what's actually on screen right now. Debounced
+  // slightly so a fast scroll settles before kicking off decode work, rather
+  // than requesting a new batch on every intermediate frame.
+  const debounceRef = useRef(null);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      requestThumbnails(visible.map((f) => ({ relativePath: f.relativePath, width: f.width, height: f.height })));
+    }, 120);
+    return () => clearTimeout(debounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startIndex, endIndex, files]);
 
   return (
     <div>

@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import api from '../services/api';
+import { generateThumbnail } from '../utils/thumbnail';
+import { createTaskQueue } from '../utils/taskQueue';
 
 const JobContext = createContext(null);
 const STORAGE_KEY = 'pixelReducer.jobState.v1';
 const POLL_INTERVAL_MS = 700;
-const MAX_THUMBNAILS = 500;
 
 function loadPersisted() {
   try {
@@ -27,20 +28,6 @@ function savePersisted(data) {
     // Quota exceeded or storage disabled - persistence is a convenience,
     // not a hard requirement, so fail silently.
   }
-}
-
-function buildThumbnails(entries, manifestFiles) {
-  const manifestSet = new Set(manifestFiles.map((f) => f.relativePath));
-  const map = {};
-  let count = 0;
-  for (const { file, relativePath } of entries) {
-    if (count >= MAX_THUMBNAILS) break;
-    if (manifestSet.has(relativePath) && file.type && file.type.startsWith('image/')) {
-      map[relativePath] = URL.createObjectURL(file);
-      count += 1;
-    }
-  }
-  return map;
 }
 
 const initialPersisted = loadPersisted();
@@ -71,7 +58,15 @@ export function JobProvider({ children }) {
   const [modalOpen, setModalOpen] = useState(false);
   const dismissedJobRef = useRef(initialPersisted?.dismissedJobId || null);
 
+  // Thumbnails are generated lazily (only for rows actually scrolled into
+  // view - see FileQueue) rather than eagerly for the whole batch, since
+  // decoding hundreds of full-resolution originals up front is what was
+  // actually causing the lag, not the number of DOM rows.
+  const fileByPathRef = useRef(new Map()); // relativePath -> File, for on-demand thumbnailing
+  const pendingThumbsRef = useRef(new Set());
+  const generatedThumbsRef = useRef(new Set()); // avoids stale-closure re-checks against React state
   const thumbUrlsRef = useRef([]);
+  const thumbQueueRef = useRef(createTaskQueue(4));
   const pollTimerRef = useRef(null);
 
   // --- Rehydrate on mount: confirm the persisted job still exists server-side ---
@@ -223,10 +218,22 @@ export function JobProvider({ children }) {
     setUploadProgress(0);
     try {
       const data = await api.uploadFiles(entries, inputType, setUploadProgress);
-      const urls = buildThumbnails(entries, data.files);
+
+      // Reset thumbnail state for the new batch
       thumbUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-      thumbUrlsRef.current = Object.values(urls);
-      setThumbnails(urls);
+      thumbUrlsRef.current = [];
+      pendingThumbsRef.current.clear();
+      setThumbnails({});
+
+      const manifestSet = new Set(data.files.map((f) => f.relativePath));
+      const fileMap = new Map();
+      for (const { file, relativePath } of entries) {
+        if (manifestSet.has(relativePath) && file.type && file.type.startsWith('image/')) {
+          fileMap.set(relativePath, file);
+        }
+      }
+      fileByPathRef.current = fileMap;
+
       setUploadResult(data);
       setJobId(data.jobId);
       setJob(null);
@@ -236,6 +243,37 @@ export function JobProvider({ children }) {
       setError(err.message || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
+    }
+  }, []);
+
+  /**
+   * Request thumbnails for a set of currently-visible manifest items
+   * ({ relativePath, width, height }). Skips anything already generated or
+   * already in flight, and runs the actual decode work through a small
+   * concurrency-limited queue so a fast scroll can't kick off dozens of
+   * image decodes in the same tick.
+   */
+  const requestThumbnails = useCallback((items) => {
+    for (const { relativePath, width, height } of items) {
+      if (generatedThumbsRef.current.has(relativePath)) continue;
+      if (pendingThumbsRef.current.has(relativePath)) continue;
+
+      const file = fileByPathRef.current.get(relativePath);
+      if (!file) continue; // zip-sourced entries have no client-side File to thumbnail
+
+      pendingThumbsRef.current.add(relativePath);
+
+      thumbQueueRef.current(() => generateThumbnail(file, width, height))
+        .then((url) => {
+          pendingThumbsRef.current.delete(relativePath);
+          if (!url) return;
+          generatedThumbsRef.current.add(relativePath);
+          thumbUrlsRef.current.push(url);
+          setThumbnails((prev) => ({ ...prev, [relativePath]: url }));
+        })
+        .catch(() => {
+          pendingThumbsRef.current.delete(relativePath);
+        });
     }
   }, []);
 
@@ -262,6 +300,9 @@ export function JobProvider({ children }) {
   const handleReset = useCallback(() => {
     thumbUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     thumbUrlsRef.current = [];
+    pendingThumbsRef.current.clear();
+    generatedThumbsRef.current.clear();
+    fileByPathRef.current = new Map();
     setThumbnails({});
     setUploadResult(null);
     setJobId(null);
@@ -325,6 +366,7 @@ export function JobProvider({ children }) {
     handleFilesReady,
     handleProcess,
     handleReset,
+    requestThumbnails,
     getStatus
   };
 

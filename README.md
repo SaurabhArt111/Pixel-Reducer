@@ -42,6 +42,14 @@ Built as a MERN application:
   much space each is using, and delete completed ones — jobs that are
   still actively processing can't be deleted until they finish
 - Left sidebar navigation (collapses into a slide-out drawer on mobile)
+- **Smooth with large batches** (verified with 200–800+ files): the queue
+  list is fully virtualized (only on-screen rows ever hit the DOM,
+  regardless of batch size), and thumbnails are generated lazily and
+  cached — only for rows actually scrolled into view, downscaled once via
+  `createImageBitmap` + canvas instead of asking the browser to decode a
+  full-resolution original just to paint a 48px preview. A small
+  concurrency limit keeps a fast scroll from kicking off dozens of decodes
+  at once.
 - Works across your local network out of the box: the backend binds to all
   interfaces and logs its LAN URL on startup, the Vite dev server does the
   same, and CORS allows any local-network origin in development
