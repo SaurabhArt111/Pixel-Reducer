@@ -808,7 +808,7 @@ input[type='range'] {
 }
 
 .queue-viewport {
-  max-height: min(560px, 62vh);
+  max-height: min(560px, 72vh);
   overflow-y: auto;
   overflow-x: hidden;
   border: 1px solid var(--line);
@@ -1423,4 +1423,18 @@ input[type='range'] {
 
 .mt-24 {
   margin-top: 24px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 6px;
 }
